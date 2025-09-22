@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import 'package:mini_project/constants/colors.dart';
 import 'package:mini_project/forgot.dart';
 import 'package:mini_project/littlecrochet.dart';
@@ -7,7 +9,6 @@ import 'package:mini_project/signin.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
-
   @override
   State<Login> createState() => _LoginState();
 }
@@ -15,11 +16,9 @@ class Login extends StatefulWidget {
 class _LoginState extends State<Login> {
   final _userController = TextEditingController();
   final _passwordController = TextEditingController();
-  final String _hardcodedUsername = 'saniyasowris940@gmail.com';
-  final String _hardcodedPassword = '1234';
   bool _obscureText = true;
-
   bool _isLoading = false;
+
   @override
   void dispose() {
     _userController.dispose();
@@ -27,44 +26,63 @@ class _LoginState extends State<Login> {
     super.dispose();
   }
 
-  void _validationLogin() {
+  Future<bool> loginUser(String email, String password) async {
+    final url = Uri.parse('http://127.0.0.1:8000/auth/login'); // Change if needed
+
+    final response = await http.post(
+      url,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"email": email, "password": password}),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      print('Access Token: ${data["access_token"]}');
+      // TODO: Store token securely if needed
+      return true;
+    } else {
+      print('Login failed: ${response.body}');
+      return false;
+    }
+  }
+
+  void _validationLogin() async {
     print("Login pressed!");
     final u = _userController.text.trim();
     final p = _passwordController.text;
-
     if (u.isEmpty || p.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Please fill in both username and password')),
+        const SnackBar(content: Text('Please fill in both username and password')),
       );
       return;
     }
     setState(() {
       _isLoading = true;
     });
-    Future.delayed(const Duration(seconds: 1), () {
-      if (u == _hardcodedUsername && p == _hardcodedPassword) {
-        print("Credentials correct, navigating...");
-        try {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const Littlecrochet()),
-          );
-        } catch (e) {
-          print("Navigation Error: $e");
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Navigation failed: $e")),
-          );
-        } finally {
-          setState(() {
-            _isLoading = false;
-          });
-        }
-      } else {
+
+    bool success = await loginUser(u, p);
+
+    if (success) {
+      print("Credentials correct, navigating...");
+      try {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const Littlecrochet()),
+        );
+      } catch (e) {
+        print("Navigation Error: $e");
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid username or password')),
+          SnackBar(content: Text("Navigation failed: $e")),
         );
       }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid username or password')),
+      );
+    }
+
+    setState(() {
+      _isLoading = false;
     });
   }
 

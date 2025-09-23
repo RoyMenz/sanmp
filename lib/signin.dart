@@ -1,11 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:mini_project/login.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import 'package:mini_project/constants/colors.dart';
+import 'package:mini_project/login.dart';
 
 class signin extends StatefulWidget {
   const signin({super.key});
-
   @override
   State<signin> createState() => _signinState();
 }
@@ -14,12 +15,9 @@ class _signinState extends State<signin> {
   final _userController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confrirmcontroller = TextEditingController();
-  final String _hardcodedUsername = 'saniyasowris940@gmail.com';
-  final String _hardcodedPassword = '1234';
-
   bool _obscureText = true;
-
   bool _isLoading = false;
+
   @override
   void dispose() {
     _userController.dispose();
@@ -27,22 +25,33 @@ class _signinState extends State<signin> {
     _confrirmcontroller.dispose();
     super.dispose();
   }
-//   void saveAndNavigate(String username, BuildContext context) async {
-//   SharedPreferences prefs = await SharedPreferences.getInstance();
-//   await prefs.setString('u123', username);
 
-//   Navigator.pushNamed(context, '/dashboard');
-// }
+  Future<bool> signUpUser(String email, String password) async {
+    final url = Uri.parse('http://127.0.0.1:8000/auth/signup'); // Change if needed
 
-  void _validationLogin() {
+    final response = await http.post(
+      url,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"email": email, "password": password}),
+    );
+
+    if (response.statusCode == 200) {
+      print('Signup successful for $email');
+      return true;
+    } else {
+      print('Signup failed: ${response.body}');
+      return false;
+    }
+  }
+
+  void _validationLogin() async {
     print("Login pressed!");
     final u = _userController.text.trim();
     final p = _passwordController.text;
     final cp = _confrirmcontroller.text;
     if (u.isEmpty || p.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Please fill in both username and password')),
+        const SnackBar(content: Text('Please fill in both username and password')),
       );
       return;
     }
@@ -55,29 +64,29 @@ class _signinState extends State<signin> {
     setState(() {
       _isLoading = true;
     });
-    Future.delayed(const Duration(seconds: 1), () {
-      if (u == _hardcodedUsername && p == _hardcodedPassword) {
-        print("Credentials correct, navigating...");
-        try {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const Login()),
-          );
-        } catch (e) {
-          print("Navigation Error: $e");
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Navigation failed: $e")),
-          );
-        } finally {
-          setState(() {
-            _isLoading = false;
-          });
-        }
-      } else {
+
+    bool success = await signUpUser(u, p);
+
+    if (success) {
+      try {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const Login()),
+        );
+      } catch (e) {
+        print("Navigation Error: $e");
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid username or password')),
+          SnackBar(content: Text("Navigation failed: $e")),
         );
       }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid username or password')),
+      );
+    }
+
+    setState(() {
+      _isLoading = false;
     });
   }
 
@@ -90,14 +99,12 @@ class _signinState extends State<signin> {
           SizedBox(height: 50),
           Text(
             "Create an",
-            style:
-                GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 45),
+            style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 45),
             textAlign: TextAlign.left,
           ),
           Text(
             "Account",
-            style:
-                GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 45),
+            style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 45),
             textAlign: TextAlign.left,
           ),
           const SizedBox(height: 30),
